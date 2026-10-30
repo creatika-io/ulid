@@ -169,9 +169,40 @@ void main() {
 
   test('Ulid() rejects out-of-range millis', () {
     expect(() => Ulid(millis: -1), throwsArgumentError);
-    expect(() => Ulid(millis: (1 << 48)), throwsArgumentError);
+    expect(() => Ulid(millis: 0xFFFFFFFFFFFF + 1), throwsArgumentError);
     expect(Ulid(millis: 0), isNotNull);
-    expect(Ulid(millis: (1 << 48) - 1), isNotNull);
+    expect(Ulid(millis: 0xFFFFFFFFFFFF), isNotNull);
+  });
+
+  group('values wider than 32 bits stay exact in JavaScript (issue #2)', () {
+    test('a fixed millis round-trips through base32 and toMillis', () {
+      for (final millis in [1547440090230, 0xFFFFFFFFFFFF]) {
+        final id = Ulid(millis: millis);
+        expect(id.toMillis(), millis);
+        final parsed = Ulid.parse(id.toBase32());
+        expect(parsed, id);
+        expect(parsed.toMillis(), millis);
+      }
+    });
+
+    test('a known id encodes and decodes to the same bytes', () {
+      const base32 = '01D159VV3PY3GX5GXMMPB8EY39';
+      const bytes = [
+        0x01, 0x68, 0x4a, 0x9d, 0xec, 0x76, // millis 1547440090230
+        0xf0, 0xe1, 0xd2, 0xc3, 0xb4, // random, upper 40 bits
+        0xa5, 0x96, 0x87, 0x78, 0x69, // random, lower 40 bits
+      ];
+      expect(Ulid.fromBytes(bytes).toBase32(), base32);
+      expect(Ulid.parse(base32).toBytes(), bytes);
+      expect(Ulid.parse(base32).toMillis(), 1547440090230);
+    });
+
+    test('a freshly minted id carries the current time', () {
+      final minted = Ulid();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      expect(minted.toMillis(), closeTo(now, 1000));
+      expect(Ulid.parse(minted.toBase32()).toMillis(), closeTo(now, 1000));
+    });
   });
 
   group('UlidFactory', () {

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Fork fix for [#2](https://github.com/agilord/ulid/issues/2): the 48-bit
+  timestamp and the 40-bit random groups are exact when compiled to JavaScript
+  (dart2js, DDC). `Ulid()`, `toMillis()`, `toBase32()` and `Ulid.parse` used
+  32-bit bitwise operators there and lost the high bits; they now use integer
+  arithmetic. Output on the VM and dart2wasm is unchanged.
+
 ## 2.2.0
 
 - Improved performance in various places.
