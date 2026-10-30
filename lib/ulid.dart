@@ -138,8 +138,9 @@ class Ulid implements Comparable<Ulid> {
   /// Returns the millisecond component.
   int toMillis() {
     var millis = 0;
+    // Arithmetic, not bitwise: JS bitwise operators truncate to 32 bits.
     for (var i = 0; i < 6; i++) {
-      millis = (millis << 8) + _data[i];
+      millis = millis * 256 + _data[i];
     }
     return millis;
   }
@@ -185,24 +186,26 @@ class Ulid implements Comparable<Ulid> {
 
   void _encode(int inS, int inE, Uint8List buffer, int outS, int outE) {
     var value = 0;
+    // Arithmetic, not bitwise: JS bitwise operators truncate to 32 bits.
     for (var i = inS; i <= inE; i++) {
-      value = (value << 8) | _data[i];
+      value = value * 256 + _data[i];
     }
     for (var i = outE; i >= outS; i--) {
-      buffer[i] = value & 0x1F;
-      value = value >> 5;
+      buffer[i] = value % 32;
+      value = value ~/ 32;
     }
   }
 
   static void _decode(
       Uint8List buffer, int inS, int inE, Uint8List data, int outS, int outE) {
     var value = 0;
+    // Arithmetic, not bitwise: JS bitwise operators truncate to 32 bits.
     for (var i = inS; i <= inE; i++) {
-      value = (value << 5) | buffer[i];
+      value = value * 32 + buffer[i];
     }
     for (var i = outE; i >= outS; i--) {
-      data[i] = value & 0xFF;
-      value = value >> 8;
+      data[i] = value % 256;
+      value = value ~/ 256;
     }
   }
 }
@@ -325,9 +328,10 @@ class UlidFactory {
 
     final data = Uint8List(16);
     var tsRemaining = effectiveMillis;
+    // Arithmetic, not bitwise: JS bitwise operators truncate to 32 bits.
     for (var i = 5; i >= 0; i--) {
-      data[i] = tsRemaining & 0xFF;
-      tsRemaining = tsRemaining >> 8;
+      data[i] = tsRemaining % 256;
+      tsRemaining = tsRemaining ~/ 256;
     }
     data.setRange(6, 16, randomBytes);
     return Ulid._(data);
